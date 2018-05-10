@@ -9,8 +9,14 @@ from hmc_base import AbstractHmcSampler
 class IsotropicHmcSampler(AbstractHmcSampler):
     """Standard unconstrained HMC sampler with identity mass matrix. """
 
-    def kinetic_energy(self, pos, mom, cache={}):
-        return 0.5 * mom.dot(mom)
+    def kinetic_energy(self, pos, mom, mass, cache={}):
+        if mass.shape[0]==1:
+            return (0.5 * mom.dot(mom))/mass
+        else:
+            mass_inv = np.linalg.inv(mass)
+            return 0.5 * mom.dot(mass_inv).dot(mom)
+            
+        
 
     def simulate_dynamic(self, n_step, dt, pos, mom, cache={}):
         mom = mom - 0.5 * dt * self.energy_grad(pos, cache)
@@ -35,7 +41,7 @@ class EuclideanMetricHmcSampler(IsotropicHmcSampler):
         self.mass_matrix = mass_matrix
         self.mass_matrix_chol = la.cholesky(mass_matrix, lower=True)
 
-    def kinetic_energy(self, pos, mom, cache={}):
+    def kinetic_energy(self, pos, mom, mass, cache={}):
         return 0.5 * mom.dot(la.cho_solve(
             (self.mass_matrix_chol, True), mom))
 

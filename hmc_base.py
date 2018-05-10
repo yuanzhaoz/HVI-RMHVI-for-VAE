@@ -78,7 +78,7 @@ class AbstractHmcSampler(object):
         self.mom_resample_coeff = mom_resample_coeff
         self.dtype = dtype
 
-    def kinetic_energy(self, pos, mom, cache={}):
+    def kinetic_energy(self, pos, mom, mass, cache={}):
         """
         Value of kinetic energy term at provided state pair.
 
@@ -200,7 +200,7 @@ class AbstractHmcSampler(object):
             return (self.mom_resample_coeff * mom_i +
                     (1. - self.mom_resample_coeff**2)**0.5 * mom)
 
-    def hamiltonian(self, pos, mom, cache={}):
+    def hamiltonian(self, pos, mom, mass, cache={}):
         """
         Hamiltonian (negative log density) of a position-momentum state pair.
 
@@ -222,9 +222,9 @@ class AbstractHmcSampler(object):
             Hamiltonian value at specified state pair.
         """
         return (self.energy_func(pos, cache) +
-                self.kinetic_energy(pos, mom, cache))
+                self.kinetic_energy(pos, mom, mass, cache))
 
-    def get_samples(self, pos, dt, n_step_per_sample, n_sample, mom=None):
+    def get_samples(self, pos, dt, n_step_per_sample, n_sample, mass, mom=None):
         """
         Run HMC sampler and return state samples.
 
@@ -272,7 +272,7 @@ class AbstractHmcSampler(object):
         else:
             randomise_steps = False
 
-        hamiltonian_c = self.hamiltonian(pos, mom, cache)
+        hamiltonian_c = self.hamiltonian(pos, mom, mass, cache)
         n_reject = 0
 
         for s in range(1, n_sample):
@@ -284,7 +284,7 @@ class AbstractHmcSampler(object):
                 pos_p, mom_p, cache_p = self.simulate_dynamic(
                     n_step_per_sample, dt, pos_samples[s-1],
                     mom_samples[s-1], cache)
-                hamiltonian_p = self.hamiltonian(pos_p, mom_p, cache_p)
+                hamiltonian_p = self.hamiltonian(pos_p, mom_p, mass, cache_p)
                 proposal_successful = True
             except DynamicsError as e:
                 logger.info('Error occured when simulating dynamic. '
@@ -307,6 +307,6 @@ class AbstractHmcSampler(object):
                 pos_samples[s], mom_samples[s], cache)
             if self.mom_resample_coeff != 0:
                 hamiltonian_c = self.hamiltonian(pos_samples[s],
-                                                 mom_samples[s], cache)
+                                                 mom_samples[s], mass, cache)
 
         return pos_samples, mom_samples, 1. - (n_reject * 1. / n_sample)
