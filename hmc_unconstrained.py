@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
 """ Numpy implementations of unconstrained Euclidean metric HMC samplers. """
 
 import numpy as np
+from numpy import inf
 import scipy.linalg as la
 from hmc_base import AbstractHmcSampler
 
@@ -18,14 +18,25 @@ class IsotropicHmcSampler(AbstractHmcSampler):
             
         
 
-    def simulate_dynamic(self, n_step, dt, pos, mom, cache={}):
-        mom = mom - 0.5 * dt * self.energy_grad(pos, cache)
-        pos = pos + dt * mom
-        for s in range(1, n_step):
-            mom -= dt * self.energy_grad(pos, cache)
-            pos += dt * mom
-        mom -= 0.5 * dt * self.energy_grad(pos, cache)
-        return pos, mom, None
+    def simulate_dynamic(self, n_step, dt, pos, mom, mass, cache={}):
+        if mass.shape[0]==1:
+            mom = mom - 0.5 * dt * self.energy_grad(pos, cache)
+            pos = pos + dt * (mom/mass)
+            for s in range(1, n_step):
+                mom -= dt * self.energy_grad(pos, cache)
+                pos += dt * (mom/mass)
+            mom -= 0.5 * dt * self.energy_grad(pos, cache)
+            return pos, mom, None
+                
+        else:
+            mass_inv = np.linalg.inv(mass)
+            mom = mom - 0.5 * dt * self.energy_grad(pos, cache)
+            pos = pos + dt * (mom.dot(mass_inv))
+            for s in range(1, n_step):
+                mom -= dt * self.energy_grad(pos, cache)
+                pos += dt * (mom.dot(mass_inv))
+            mom -= 0.5 * dt * self.energy_grad(pos, cache)
+            return pos, mom, None
 
     def sample_independent_momentum_given_position(self, pos, cache={}):
         return self.prng.normal(size=pos.shape[0]).astype(self.dtype)

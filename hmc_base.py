@@ -99,7 +99,7 @@ class AbstractHmcSampler(object):
         """
         raise NotImplementedError()
 
-    def simulate_dynamic(self, n_step, dt, pos, mom, cache={}):
+    def simulate_dynamic(self, n_step, dt, pos, mom, mass, cache={}):
         """
         Simulate Hamiltonian dynamics from a given state and return new state.
 
@@ -255,6 +255,7 @@ class AbstractHmcSampler(object):
         acceptance_rate : scalar in [0, 1]
             Proportion of Hamiltonian dynamic proposals accepted.
         """
+        #pos = pos.detach().numpy()
         n_dim = pos.shape[0]
         pos_samples, mom_samples = np.empty((2, n_sample, n_dim), self.dtype)
         cache = {}
@@ -283,7 +284,7 @@ class AbstractHmcSampler(object):
             try:
                 pos_p, mom_p, cache_p = self.simulate_dynamic(
                     n_step_per_sample, dt, pos_samples[s-1],
-                    mom_samples[s-1], cache)
+                    mom_samples[s-1], mass, cache)
                 hamiltonian_p = self.hamiltonian(pos_p, mom_p, mass, cache_p)
                 proposal_successful = True
             except DynamicsError as e:
