@@ -15,7 +15,8 @@ class IsotropicHmcSampler(AbstractHmcSampler):
             return (0.5 * mom*mom)/mass
         else:
             mass_inv = torch.inverse(mass)
-            return 0.5*torch.mm(torch.mm(mom, mass_inv), mom)
+            return 0.5*((mom@mass_inv)@mom)
+            #return 0.5*torch.mm(torch.mm(mom, mass_inv), mom)
             #return 0.5 * mom.dot(mass_inv).dot(mom)
             
     def simulate_dynamic(self, n_step, dt, pos, mom, mass, cache={}):
@@ -36,11 +37,11 @@ class IsotropicHmcSampler(AbstractHmcSampler):
         else:
             mass_inv = torch.inverse(mass)
             mom = mom - 0.5 * dt * self.energy_grad(pos, cache)
-            pos = pos + dt * (torch.mm(mom, mass_inv))
+            pos = pos + dt * (mom@mass_inv)
             for s in range(1, n_step):
-                mom -= dt * self.energy_grad(pos, cache)
-                pos += dt * (torch.mm(mom, mass_inv))
-            mom -= 0.5 * dt * self.energy_grad(pos, cache)
+                mom = mom - dt * self.energy_grad(pos, cache)
+                pos = pos + dt * (mom@mass_inv)
+            mom = mom - 0.5 * dt * self.energy_grad(pos, cache)
             return pos, mom, None
 
     def sample_independent_momentum_given_position(self, pos, cache={}):
