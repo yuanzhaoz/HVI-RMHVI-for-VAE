@@ -21,14 +21,14 @@ class AbstractHmcSampler(object):
       
         self.energy_func = energy_func
         def gradient(pos, cache):
-            print("------calling energy function------")
+            #print("------calling energy function------")
             pos.retain_grad()
             x = energy_func(pos, cache)
             x.backward(retain_graph=True)
             
             g = pos.grad.clone()
             #pos.grad.zero_()
-            print("g:"+str(g))
+            #print("g:"+str(g))
             pos.grad.data.zero_()
             return g
 
@@ -87,23 +87,22 @@ class AbstractHmcSampler(object):
         else:
             randomise_steps = False
 
-        print("========== 1st hamiltonian ==============")
+        #print("========== 1st hamiltonian ==============")
         hamiltonian_c = self.hamiltonian(pos, mom, mass, cache)
         n_reject = 0
 
         for s in range(1, n_sample):
-            print("Sample: "+str(s))
+            #print("Sample: "+str(s))
             if randomise_steps:
                 n_step_per_sample = self.prng.random_integers(
                     step_interval_lower, step_interval_upper)
             # simulate Hamiltonian dynamic to get new state pair proposal
             try:
-                #print("sample0: "+str(pos_samples[s-1])+str(pos_samples[s-1].requires_grad))
-                print("========== simulate ==============")
+                #print("========== simulate ==============")
                 pos_p, mom_p, cache_p = self.simulate_dynamic(
                     n_step_per_sample, dt, pos_samples[s-1],
                     mom_samples[s-1], mass, cache)
-                print("========== 2nd hamiltonian ==============")
+                #print("========== 2nd hamiltonian ==============")
                 hamiltonian_p = self.hamiltonian(pos_p, mom_p, mass, cache_p)
                 proposal_successful = True
             except DynamicsError as e:
@@ -126,7 +125,7 @@ class AbstractHmcSampler(object):
             mom_samples[s] = self.resample_momentum(
                 pos_samples[s], mom_samples[s], cache)
             if self.mom_resample_coeff != 0:
-                print("========== 3rd hamiltonian ==============")
+                #print("========== 3rd hamiltonian ==============")
                 hamiltonian_c = self.hamiltonian(pos_samples[s],
                                                  mom_samples[s], mass, cache)
 

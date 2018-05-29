@@ -11,21 +11,24 @@ class IsotropicHmcSampler(AbstractHmcSampler):
     """Standard unconstrained HMC sampler with identity mass matrix. """
 
     def kinetic_energy(self, pos, mom, mass, cache={}):
+        mom = mom.cuda()
         if mass.shape[0]==1:
             return (0.5 * mom*mom)/mass
         else:
-            mass_inv = torch.inverse(mass)
+            mass_inv = torch.inverse(mass).cuda()
+            #print("mom: "+str(mom.is_cuda))
+            #print("mass_inv: "+str(mass_inv.is_cuda))
             return 0.5*((mom@mass_inv)@mom)
             #return 0.5*torch.mm(torch.mm(mom, mass_inv), mom)
             #return 0.5 * mom.dot(mass_inv).dot(mom)
             
     def simulate_dynamic(self, n_step, dt, pos, mom, mass, cache={}):
         if mass.shape[0]==1:
-            print("pos:"+str(pos)+" "+str(pos.requires_grad))
+            #print("pos:"+str(pos)+" "+str(pos.requires_grad))
             grad = self.energy_grad(pos, cache)
-            print("grad1:"+str(grad))
+            #print("grad1:"+str(grad))
             #print("grad2:"+str(grad))
-            print("mom"+str(mom))
+            #print("mom"+str(mom))
             mom = mom - 0.5 * dt * grad
             pos = pos + dt * (mom/mass)
             for s in range(1, n_step):
