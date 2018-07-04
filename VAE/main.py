@@ -282,6 +282,7 @@ def lower_bound(decoder, q_z0, r_v, data, T):
             one_mu_vt, one_logvar_vt = r_v(one_new_data)
             #print("one_mu_vt 1: " + str(one_mu_vt.shape))
             one_var_vt = torch.exp(one_logvar_vt)
+            
             one_mu_vt = one_mu_vt.view(one_mu_vt.shape[1])
             one_cov = torch.diag(one_var_vt.view(one_var_vt.shape[1]))
             

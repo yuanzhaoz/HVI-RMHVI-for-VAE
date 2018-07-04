@@ -20,10 +20,16 @@ class AbstractHmcSampler(object):
                  mom_resample_coeff=1., dtype=np.float64):
       
         self.energy_func = energy_func
-        def gradient(pos, cache):
-            #print("------calling energy function------")
-            pos.retain_grad()
-            x = energy_func(pos, cache)
+        
+        
+        def gradient(p, cache):
+            pos = torch.tensor(p.data, requires_grad=True)
+            
+            pos_cuda = pos.cuda()
+            #pos.retain_grad()
+            
+            x = energy_func(pos_cuda, cache)
+            
             x.backward(retain_graph=True)
             
             g = pos.grad.clone()
@@ -31,7 +37,19 @@ class AbstractHmcSampler(object):
             #print("g:"+str(g))
             pos.grad.data.zero_()
             return g
-
+        """
+        def gradient(pos, cache):
+            #print("------calling energy function------")
+            pos.retain_grad()
+            
+            x = energy_func(pos, cache)
+            x.backward(retain_graph=True)
+            
+            g = pos.grad
+            pos.grad.zero_()
+            #print("g:"+str(g))
+            return g
+        """
         if energy_grad is None:
             self.energy_grad = gradient
         else:
@@ -69,14 +87,19 @@ class AbstractHmcSampler(object):
                 self.kinetic_energy(pos, mom, mass, cache))
 
     def get_samples(self, pos, dt, n_step_per_sample, n_sample, mass, mom=None):
+        
+        #pos_nocuda = torch.tensor(p.data, requires_grad=True)
+        #pos = pos_nocuda.cuda()
         #pos = pos.detach().numpy()
         n_dim = pos.shape[0]
         pos_samples, mom_samples = torch.empty((2, n_sample, n_dim))
+        
         cache = {}
         if mom is None:
             mom = self.sample_independent_momentum_given_position(pos, cache)
         pos_samples[0], mom_samples[0] = pos, mom
 
+        
         # check if number of steps specified by tuple and if so extract
         # interval bounds and check valid
         if isinstance(n_step_per_sample, tuple):
@@ -92,7 +115,7 @@ class AbstractHmcSampler(object):
         n_reject = 0
 
         for s in range(1, n_sample):
-            #print("Sample: "+str(s))
+            #print("========= Sample: "+str(s))
             if randomise_steps:
                 n_step_per_sample = self.prng.random_integers(
                     step_interval_lower, step_interval_upper)
@@ -104,11 +127,16 @@ class AbstractHmcSampler(object):
                     mom_samples[s-1], mass, cache)
                 #print("========== 2nd hamiltonian ==============")
                 hamiltonian_p = self.hamiltonian(pos_p, mom_p, mass, cache_p)
+                #print("hamiltonian_p: "+str(hamiltonian_p))
                 proposal_successful = True
             except DynamicsError as e:
                 logger.info('Error occured when simulating dynamic. '
                             'Rejecting.\n' + str(e))
                 proposal_successful = False
+            
+            pos_samples[s], mom_samples[s], cache = pos_p, mom_p, cache_p
+            hamiltonian_c = hamiltonian_p
+            """
             # Metropolis-Hastings accept step on proposed update
             if (proposal_successful and self.prng.uniform() <
                     torch.exp(hamiltonian_c - hamiltonian_p).item()):
@@ -116,11 +144,13 @@ class AbstractHmcSampler(object):
                 pos_samples[s], mom_samples[s], cache = pos_p, mom_p, cache_p
                 hamiltonian_c = hamiltonian_p
             else:
+                #print("---------sample rejected-----------")
                 # reject move
                 pos_samples[s] = pos_samples[s-1]
                 # negate momentum on rejection to ensure reversibility
                 mom_samples[s] = -mom_samples[s-1]
                 n_reject += 1
+            """
             # momentum update transition: leaves momentum conditional invariant
             mom_samples[s] = self.resample_momentum(
                 pos_samples[s], mom_samples[s], cache)
@@ -130,3 +160,5 @@ class AbstractHmcSampler(object):
                                                  mom_samples[s], mass, cache)
 
         return pos_samples, mom_samples, 1. - (n_reject * 1. / n_sample)
+    
+    
