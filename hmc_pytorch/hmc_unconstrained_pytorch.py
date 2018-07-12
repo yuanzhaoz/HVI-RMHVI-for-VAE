@@ -46,26 +46,32 @@ class IsotropicHmcSampler(AbstractHmcSampler):
             return pos, mom, None
                 
         else:
-            mass_inv = torch.inverse(mass).cuda()
-            tmp = self.energy_grad(pos, cache)
-            print("pos: "+str(pos))
-            print("grad: "+str(tmp))
-            #mom = mom - 0.5 * dt * self.energy_grad(pos, cache)
-            mom = mom - 0.5 * dt * tmp
             mom = mom.cuda()
             pos = pos.cuda()
+            mass_inv = torch.inverse(mass).cuda()
+            
+            tmp = self.energy_grad(pos, cache).cuda()
+            #print("pos: "+str(pos))
+            #print("grad: "+str(tmp))
+            #mom = mom - 0.5 * dt * self.energy_grad(pos, cache)
+            #print("tmp: "+str(tmp.shape))
+            #print("mom: "+str(mom.shape))
+            #print("dt: "+str(dt.shape))
+            
+            mom = mom - 0.5 * dt * tmp
+            #print("mom size: "+str(mom.shape))
             #print("mom: "+str(mom.is_cuda))
             #print("mass_inv: "+str(mass_inv.is_cuda))
             #print("pos: "+str(pos.is_cuda))
             pos = pos + dt * (mom@mass_inv)
             #print("2nd pos: "+str(pos))
             for s in range(1, n_step):
-                print("loop pos: "+str(pos))
-                tmp = self.energy_grad(pos, cache)
-                print("loop grad: "+str(tmp))
+                #print("loop pos: "+str(pos))
+                tmp = self.energy_grad(pos, cache).cuda()
+                #print("loop grad: "+str(tmp))
                 mom = mom - dt * tmp
                 pos = pos + dt * (mom@mass_inv)
-            mom = mom - 0.5 * dt * self.energy_grad(pos, cache)
+            mom = mom - 0.5 * dt * (self.energy_grad(pos, cache).cuda())
             return pos, mom, None
 
     def sample_independent_momentum_given_position(self, pos, cache={}):
